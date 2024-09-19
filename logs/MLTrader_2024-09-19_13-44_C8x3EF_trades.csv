@@ -1,0 +1,5 @@
+time,strategy,identifier,symbol,side,type,status,multiplier,time_in_force,asset.strike,asset.multiplier,asset.asset_type,price,filled_quantity,trade_cost
+2024-04-15 09:30:00-04:00,MLTrader,97d789d950ea4c9c982a2d50a2a65998,NVDA,buy,market,new,1,gtc,0.0,1,stock,,,
+2024-04-15 09:30:00-04:00,MLTrader,97d789d950ea4c9c982a2d50a2a65998,NVDA,buy,market,fill,1,gtc,0.0,1,stock,89.0979995727539,561.0,0.0
+2024-04-19 09:30:00-04:00,MLTrader,54fb90af36034846861ad5de2f2ffaf3,NVDA,sell,limit,canceled,1,day,0.0,1,stock,,,
+2024-04-19 09:30:00-04:00,MLTrader,4c7536f28c874ec5b9f906737e6f0ec8,NVDA,sell,stop,fill,1,day,0.0,1,stock,80.18819961547852,561.0,0.0
