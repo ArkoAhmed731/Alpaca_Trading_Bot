@@ -1,0 +1,11 @@
+time,strategy,identifier,symbol,side,type,status,multiplier,time_in_force,asset.strike,asset.multiplier,asset.asset_type,price,filled_quantity,trade_cost
+2020-07-13 09:30:00-04:00,MLTrader,2eb34ad9985441ea9a99ef30e8fe84b5,NDAQ,buy,market,new,1,gtc,0.0,1,stock,,,
+2020-07-13 09:30:00-04:00,MLTrader,2eb34ad9985441ea9a99ef30e8fe84b5,NDAQ,buy,market,fill,1,gtc,0.0,1,stock,40.996665954589844,1220.0,0.0
+2021-07-20 09:30:00-04:00,MLTrader,c8da2f32598149e4b12e16f40bea0b3d,NDAQ,sell,stop,canceled,1,day,0.0,1,stock,,,
+2021-07-20 09:30:00-04:00,MLTrader,f0323fa287de42a3a5443a6191117107,NDAQ,sell,limit,fill,1,day,0.0,1,stock,61.494998931884766,1220.0,0.0
+2024-06-04 09:30:00-04:00,MLTrader,d6359a8f1a254b3c82bf538f4bb05e88,NDAQ,sell,market,new,1,gtc,0.0,1,stock,,,
+2024-06-04 09:30:00-04:00,MLTrader,d6359a8f1a254b3c82bf538f4bb05e88,NDAQ,sell,market,fill,1,gtc,0.0,1,stock,59.619998931884766,1048.0,0.0
+2024-06-05 09:30:00-04:00,MLTrader,c8978681ed074cdeb8303fb4f48d5c01,NDAQ,sell,market,new,1,gtc,0.0,1,stock,,,
+2024-06-05 09:30:00-04:00,MLTrader,c8978681ed074cdeb8303fb4f48d5c01,NDAQ,sell,market,fill,1,gtc,0.0,1,stock,59.56999969482422,1574.0,0.0
+2024-06-06 09:30:00-04:00,MLTrader,baa29280018d4d36898c5bf686b28b97,NDAQ,sell,market,new,1,gtc,0.0,1,stock,,,
+2024-06-06 09:30:00-04:00,MLTrader,baa29280018d4d36898c5bf686b28b97,NDAQ,sell,market,fill,1,gtc,0.0,1,stock,58.93000030517578,2386.0,0.0

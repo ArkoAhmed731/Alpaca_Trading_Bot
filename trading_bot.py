@@ -19,7 +19,7 @@ ALPACA_CREDS = {
 }
 
 class MLTrader(Strategy):
-    def initialize(self, symbol:str="SPY", cash_at_risk:float=.5):
+    def initialize(self, symbol:str="QQQ", cash_at_risk:float=.5):
         self.symbol = symbol
         self.sleeptime = "24H"
         self.last_trade = None
@@ -49,7 +49,7 @@ class MLTrader(Strategy):
         probability, sentiment = self.get_sentiment()
 
         if cash > last_price: 
-            if sentiment == "positive" and probability > .999: 
+            if sentiment == "positive" and probability > .99: 
                 if self.last_trade == "sell": 
                     self.sell_all() 
                 order = self.create_order(
@@ -57,8 +57,8 @@ class MLTrader(Strategy):
                     quantity, 
                     "buy", 
                     type="bracket", 
-                    take_profit_price=last_price*1.20, 
-                    stop_loss_price=last_price*.95
+                    take_profit_price=last_price*1.2, #previois 1.25
+                    stop_loss_price=last_price*.93 #previous .95
                 )
                 self.submit_order(order) 
                 self.last_trade = "buy"
@@ -70,15 +70,19 @@ class MLTrader(Strategy):
                     quantity, 
                     "sell", 
                     type="bracket", 
-                    take_profit_price=last_price*.8, 
-                    stop_loss_price=last_price*1.05
+                    take_profit_price=last_price*.85, #previous 0.85
+                    stop_loss_price=last_price*1.05  #pevious 1.05
                 )
                 self.submit_order(order) 
                 self.last_trade = "sell"
             
-start_date = datetime(2020,1,1)
-end_date  = datetime(2024,6,30)
+start_date = datetime(2022,10,1)
+end_date  = datetime(2023,10,30)
 
 broker = Alpaca(ALPACA_CREDS)
-strategy = MLTrader(name='mlstrat',broker=broker, parameters = {"symbol":"SPY", "cash_at_risk":0.5})
-strategy.backtest(YahooDataBacktesting, start_date, end_date, parameters={"symbol":"SPY", "cash_at_risk":0.5})
+strategy = MLTrader(name='mlstrat',broker=broker, parameters = {"symbol":"QQQ", "cash_at_risk":0.5})
+strategy.backtest(YahooDataBacktesting, start_date, end_date, parameters={"symbol":"QQQ", "cash_at_risk":0.5})
+
+#trader = Trader()
+#trader.add_strategy(strategy)
+#trader.run_all()

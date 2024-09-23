@@ -1,0 +1,186 @@
+from lumibot.brokers import Alpaca 
+from lumibot.backtesting import YahooDataBacktesting
+from lumibot.strategies.strategy import Strategy
+from lumibot.traders import Trader
+from datetime import datetime, time, timedelta
+from alpaca_trade_api import REST, TimeFrame
+from timedelta import Timedelta
+import pandas as pd
+
+API_KEY = "PKJ9MJKFYG4URI1AYZ8I"
+API_SECRET = "BtcTpaIMVvHlwACxKw4cIgfOHVQZIOnydTrQEoIh"
+BASE_URL = "https://paper-api.alpaca.markets"
+
+ALPACA_CREDS = {
+    "API_KEY": API_KEY,
+    "API_SECRET": API_SECRET,
+    "PAPER": True
+}
+
+def get_current_session():
+    """
+    Determine the current trading session based on UTC time.
+    """
+    current_time = datetime.utcnow().time()
+
+    # Tokyo Session: 00:00 - 09:00 UTC
+    if time(0, 0) <= current_time <= time(9, 0):
+        return 'Tokyo'
+
+    # London Session: 07:00 - 16:00 UTC
+    elif time(7, 0) <= current_time <= time(16, 0):
+        return 'London'
+
+    # New York Session: 13:00 - 22:00 UTC
+    elif time(13, 0) <= current_time <= time(22, 0):
+        return 'New York'
+
+    else:
+        return 'Closed'  # Market is closed
+
+class MLTrader(Strategy):
+    def initialize(self, symbol:str="QQQ", cash_at_risk:float=.5):
+        self.symbol = symbol
+        self.sleeptime = "24H"
+        self.last_trade = None
+        self.cash_at_risk = cash_at_risk
+        self.api = REST(API_KEY, API_SECRET, BASE_URL)
+
+    def position_sizing(self):
+        cash = self.get_cash()
+        last_price = self.get_last_price(self.symbol)
+        quantity = round(cash * self.cash_at_risk / last_price, 0)
+        print(f"Position Sizing: Cash={cash}, Last Price={last_price}, Quantity={quantity}")
+        return cash, last_price, quantity
+
+    # Detect Fair Value Gaps (FVG)
+    def detect_fvg(self, data):
+        """
+        Detect Fair Value Gaps (FVG) in historical price data.
+        """
+        fvg_detected = []
+        for i in range(1, len(data)):
+            if data['close'][i-1] < data['open'][i] and data['high'][i-1] < data['open'][i]:
+                fvg_detected.append((data.index[i], 'upward'))
+            elif data['close'][i-1] > data['open'][i] and data['low'][i-1] > data['open'][i]:
+                fvg_detected.append((data.index[i], 'downward'))
+        print(f"Detected FVGs: {fvg_detected}")
+        return fvg_detected
+
+    # Detect high/low sweeps for sessions
+    def detect_sweeps(self, data, session='London'):
+        """
+        Detect high/low sweeps in the London, Tokyo, or New York sessions.
+        A sweep occurs when the price breaks the high/low and retraces.
+        """
+        session_times = {
+            'London': (time(7, 0), time(16, 0)),  # UTC time for London session
+            'Tokyo': (time(0, 0), time(9, 0)),   # UTC time for Tokyo session
+            'New York': (time(13, 0), time(22, 0))  # UTC time for New York session
+        }
+
+        # Get the session's start and end times
+        start_time, end_time = session_times[session]
+
+        # Filter data based on time of day (use the index for datetime)
+        session_data = data.between_time(f"{start_time}", f"{end_time}")
+
+        # Get session high and low
+        session_high = session_data['high'].max()
+        session_low = session_data['low'].min()
+
+        # Current price
+        current_price = data['close'].iloc[-1]
+
+        # Detect sweeps
+        high_sweep = False
+        low_sweep = False
+
+        if data['high'].iloc[-1] > session_high and current_price < session_high:
+            high_sweep = True
+
+        if data['low'].iloc[-1] < session_low and current_price > session_low:
+            low_sweep = True
+
+        print(f"{session} Session: High Sweep={high_sweep}, Low Sweep={low_sweep}")
+        return high_sweep, low_sweep
+
+    def on_trading_iteration(self):
+        # Check the current session
+        session = get_current_session()
+        print(f"Current Session: {session}")
+        if session == 'Closed':
+            print("Market is closed. No trading at this time.")
+            return
+
+        cash, last_price, quantity = self.position_sizing()
+
+        # Fetch historical data for FVG and sweep detection
+        bars = self.api.get_bars(self.symbol, TimeFrame.Hour, start="2023-01-01", end="2024-01-01").df
+
+        # Check if data is returned
+        if bars.empty:
+            print("No data available. Ending trading iteration.")
+            return
+
+        print(f"Bars data: {bars.head()}")  # Debugging: Inspect the first few rows of data
+
+        # Make sure the index is a DatetimeIndex
+        bars.index = pd.to_datetime(bars.index)
+
+        # Detect Fair Value Gaps (FVG)
+        fvg_data = self.detect_fvg(bars)
+
+        # Detect sweeps based on the session
+        session_sweeps = self.detect_sweeps(bars, session=session)
+
+        # Add trading logic based on sweeps and FVG
+        if cash > last_price:
+            # Long trade when low sweep is detected and there is an upward FVG
+            if session_sweeps[1]:  # Long if low sweep detected
+                if self.last_trade == "sell":
+                    self.sell_all()
+                order = self.create_order(
+                    self.symbol, 
+                    quantity, 
+                    "buy", 
+                    type="bracket", 
+                    take_profit_price=last_price * 1.5, 
+                    stop_loss_price=last_price * 0.8
+                )
+                self.submit_order(order)
+                self.last_trade = "buy"
+                print("Placed a BUY order after low sweep and FVG confirmation.")
+
+            # Short trade when high sweep is detected and there is a downward FVG
+            elif session_sweeps[0]:  # Short if high sweep detected
+                if self.last_trade == "buy":
+                    self.sell_all()
+                order = self.create_order(
+                    self.symbol, 
+                    quantity, 
+                    "sell", 
+                    type="bracket", 
+                    take_profit_price=last_price * 0.85, 
+                    stop_loss_price=last_price * 1.05
+                )
+                self.submit_order(order)
+                self.last_trade = "sell"
+                print("Placed a SELL order after high sweep and FVG confirmation.")
+
+    def on_backtest_end(self):
+        # Only generate the tearsheet if we have enough trades
+        if len(self.trades) < 2:
+            print("Not enough trades to generate a tearsheet.")
+            return
+
+        print("Generating tearsheet...")
+        self.generate_tearsheet()
+
+# Backtesting setup
+start_date = datetime(2023, 1, 1)
+end_date = datetime(2024, 6, 30)
+
+broker = Alpaca(ALPACA_CREDS)
+strategy = MLTrader(name='mlstrat', broker=broker, parameters={"symbol": "QQQ", "cash_at_risk": 0.5})
+strategy.backtest(YahooDataBacktesting, start_date, end_date, parameters={"symbol": "QQQ", "cash_at_risk": 0.5})
